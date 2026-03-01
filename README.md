@@ -64,3 +64,9 @@ npm run dev
 - `POST /api/live` go live
 - `POST /api/discussions/:eventId/posts` post thread/reply
 - `GET /api/discussions/:eventId/export` download transcript
+
+## Notification behavior
+
+- Students receive in-app notifications for:
+  - new events created by followed professors or followed tags
+  - live sessions started by followed professors or followed tags

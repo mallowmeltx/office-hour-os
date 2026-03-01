@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendNotificationEmails } from "@/lib/email";
 
 type EventNotificationInput = {
   eventId: string;
@@ -15,6 +16,12 @@ type LiveNotificationInput = {
   type: "event_live";
   tagIds: string[];
   eventId?: string;
+};
+
+type Recipient = {
+  id: string;
+  email: string;
+  name: string | null;
 };
 
 async function buildRecipients(professorId: string, tagIds: string[]) {
@@ -39,7 +46,13 @@ async function buildRecipients(professorId: string, tagIds: string[]) {
   for (const row of profFollowers) recipients.add(row.studentId);
   for (const row of tagFollowers) recipients.add(row.studentId);
   recipients.delete(professorId);
-  return recipients;
+
+  if (recipients.size === 0) return [] as Recipient[];
+
+  return prisma.user.findMany({
+    where: { id: { in: [...recipients] } },
+    select: { id: true, email: true, name: true },
+  });
 }
 
 export async function notifyFollowersForEvent(input: EventNotificationInput) {
@@ -53,30 +66,50 @@ export async function notifyFollowersForEvent(input: EventNotificationInput) {
     eventTags.map((item: { tagId: string }) => item.tagId),
   );
 
-  if (recipients.size === 0) return;
+  if (recipients.length === 0) return;
 
   await prisma.notification.createMany({
-    data: [...recipients].map((userId) => ({
-      userId,
+    data: recipients.map((recipient: Recipient) => ({
+      userId: recipient.id,
       eventId: input.eventId,
       title: input.title,
       body: input.body,
       type: input.type,
     })),
   });
+
+  await sendNotificationEmails({
+    recipients: recipients.map((recipient: Recipient) => ({
+      email: recipient.email,
+      name: recipient.name,
+    })),
+    subject: `[Office Hours OS] ${input.title}`,
+    body: input.body,
+    eventId: input.eventId,
+  });
 }
 
 export async function notifyFollowersForLiveSession(input: LiveNotificationInput) {
   const recipients = await buildRecipients(input.professorId, input.tagIds);
-  if (recipients.size === 0) return;
+  if (recipients.length === 0) return;
 
   await prisma.notification.createMany({
-    data: [...recipients].map((userId) => ({
-      userId,
+    data: recipients.map((recipient: Recipient) => ({
+      userId: recipient.id,
       eventId: input.eventId,
       title: input.title,
       body: input.body,
       type: input.type,
     })),
+  });
+
+  await sendNotificationEmails({
+    recipients: recipients.map((recipient: Recipient) => ({
+      email: recipient.email,
+      name: recipient.name,
+    })),
+    subject: `[Office Hours OS] ${input.title}`,
+    body: input.body,
+    eventId: input.eventId,
   });
 }

@@ -14,7 +14,10 @@ export default async function CalendarPage() {
           Browse office hours and quickly join active or upcoming rooms.
         </p>
       </div>
-      <EventsCalendar isProfessor={user?.role === "PROFESSOR"} />
+      <EventsCalendar
+        isProfessor={user?.role === "PROFESSOR"}
+        currentUserId={user?.id ?? null}
+      />
     </section>
   );
 }

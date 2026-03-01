@@ -16,7 +16,6 @@ type EventRecord = {
     name: string | null;
     email: string;
   };
-  isOwner: boolean;
   tags: { tag: { id: string; name: string; slug: string } }[];
 };
 
@@ -24,9 +23,10 @@ type Tag = { id: string; name: string; slug: string };
 
 type Props = {
   isProfessor: boolean;
+  currentUserId: string | null;
 };
 
-export function EventsCalendar({ isProfessor }: Props) {
+export function EventsCalendar({ isProfessor, currentUserId }: Props) {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,13 +265,15 @@ export function EventsCalendar({ isProfessor }: Props) {
       ) : null}
 
       <div className="space-y-3">
-        {events.map((event) => (
-          <div key={event.id} className="rounded border border-slate-200 p-4">
+        {events.map((event) => {
+          const isOwner = currentUserId === event.professor.id;
+          return (
+            <div key={event.id} className="rounded border border-slate-200 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium text-slate-900">{event.title}</p>
-                  {event.isOwner ? (
+                  {isOwner ? (
                     <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
                       Your event
                     </span>
@@ -308,7 +310,7 @@ export function EventsCalendar({ isProfessor }: Props) {
               <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="text-indigo-600">
                 Join
               </a>
-              {isProfessor && event.isOwner ? (
+              {isProfessor && isOwner ? (
                 <button
                   onClick={() => void deleteEvent(event.id)}
                   disabled={deletingEventId === event.id}
@@ -318,8 +320,9 @@ export function EventsCalendar({ isProfessor }: Props) {
                 </button>
               ) : null}
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

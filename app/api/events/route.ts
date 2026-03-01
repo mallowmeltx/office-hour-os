@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser, requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/current-user";
 import { notifyFollowersForEvent } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams;
   const tagId = search.get("tagId");
   const professorId = search.get("professorId");
-  const user = await getCurrentUser();
   const now = new Date();
 
   // Auto-clean expired events and close their live sessions.
@@ -89,14 +88,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({
-    events: events.map(
-      (event: { professorId: string }) => ({
-        ...event,
-        isOwner: user ? event.professorId === user.id : false,
-      }),
-    ),
-  });
+  return NextResponse.json({ events });
 }
 
 export async function POST(request: NextRequest) {
@@ -206,9 +198,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ event }, { status: 201 });
-  } catch {
-    const maybeUser = await getCurrentUser();
-    if (!maybeUser) {
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json({ error: "Failed to create event" }, { status: 500 });

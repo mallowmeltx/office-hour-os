@@ -4,15 +4,10 @@ import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  await Promise.all(
-    DEFAULT_TAGS.map((tag) =>
-      prisma.tag.upsert({
-        where: { slug: tag.slug },
-        update: { name: tag.name },
-        create: tag,
-      }),
-    ),
-  );
+  await prisma.tag.createMany({
+    data: DEFAULT_TAGS,
+    skipDuplicates: true,
+  });
 
   const user = await getCurrentUser();
   const [tags, following] = await Promise.all([

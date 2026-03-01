@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { auth0 } from "@/lib/auth0";
 import { getCurrentUser } from "@/lib/current-user";
+import { prisma } from "@/lib/prisma";
 
 export async function SiteNav() {
   const session = await auth0.getSession();
   const user = session ? await getCurrentUser() : null;
+  const unreadCount = user
+    ? await prisma.notification.count({
+        where: {
+          userId: user.id,
+          readAt: null,
+        },
+      })
+    : 0;
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -25,8 +34,16 @@ export async function SiteNav() {
           <Link href="/tags" className="text-slate-700 hover:text-slate-900">
             Tags
           </Link>
-          <Link href="/notifications" className="text-slate-700 hover:text-slate-900">
+          <Link
+            href="/notifications"
+            className="relative text-slate-700 hover:text-slate-900"
+          >
             Notifications
+            {unreadCount > 0 ? (
+              <span className="absolute -right-4 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
           </Link>
           <Link href="/profile" className="text-slate-700 hover:text-slate-900">
             Profile

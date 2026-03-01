@@ -80,11 +80,17 @@ export async function POST(request: NextRequest) {
     if (resolvedEventId) {
       const event = await prisma.event.findUnique({
         where: { id: resolvedEventId },
-        select: { id: true, professorId: true, meetingUrl: true },
+        select: { id: true, professorId: true, meetingUrl: true, status: true },
       });
 
       if (!event || event.professorId !== user.id) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 });
+      }
+      if (event.status !== "SCHEDULED") {
+        return NextResponse.json(
+          { error: "Only your scheduled events can be linked." },
+          { status: 400 },
+        );
       }
 
       await prisma.event.update({
