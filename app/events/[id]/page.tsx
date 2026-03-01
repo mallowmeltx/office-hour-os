@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DiscussionBoard } from "@/components/discussion-board";
+import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { requirePageSession } from "@/lib/require-page-session";
 
@@ -11,6 +12,7 @@ type Props = {
 export default async function EventPage({ params }: Props) {
   const { id } = await params;
   await requirePageSession(`/events/${id}`);
+  const user = await getCurrentUser();
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
@@ -86,7 +88,7 @@ export default async function EventPage({ params }: Props) {
           Ask questions and reply in nested threads.
         </p>
         <div className="mt-4">
-          <DiscussionBoard eventId={event.id} />
+          <DiscussionBoard eventId={event.id} currentUserId={user?.id ?? null} />
         </div>
       </div>
     </section>

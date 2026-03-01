@@ -18,14 +18,16 @@ export async function GET(_: Request, context: Params) {
   const posts = await prisma.discussionPost.findMany({
     where: {
       eventId,
-      deletedAt: null,
     },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
+      authorId: true,
       parentId: true,
       content: true,
       createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
       author: {
         select: {
           name: true,

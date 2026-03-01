@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { sendNotificationEmails } from "@/lib/email";
 
 type EventNotificationInput = {
   eventId: string;
@@ -78,15 +77,6 @@ export async function notifyFollowersForEvent(input: EventNotificationInput) {
     })),
   });
 
-  await sendNotificationEmails({
-    recipients: recipients.map((recipient: Recipient) => ({
-      email: recipient.email,
-      name: recipient.name,
-    })),
-    subject: `[Office Hours OS] ${input.title}`,
-    body: input.body,
-    eventId: input.eventId,
-  });
 }
 
 export async function notifyFollowersForLiveSession(input: LiveNotificationInput) {
@@ -103,13 +93,4 @@ export async function notifyFollowersForLiveSession(input: LiveNotificationInput
     })),
   });
 
-  await sendNotificationEmails({
-    recipients: recipients.map((recipient: Recipient) => ({
-      email: recipient.email,
-      name: recipient.name,
-    })),
-    subject: `[Office Hours OS] ${input.title}`,
-    body: input.body,
-    eventId: input.eventId,
-  });
 }
