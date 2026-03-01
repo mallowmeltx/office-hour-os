@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -7,7 +6,7 @@ export async function GET() {
   const user = await getCurrentUser();
   const [professors, following] = await Promise.all([
     prisma.user.findMany({
-      where: { role: UserRole.PROFESSOR },
+      where: { role: "PROFESSOR" },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -23,12 +22,16 @@ export async function GET() {
       : Promise.resolve([]),
   ]);
 
-  const followed = new Set(following.map((item) => item.professorId));
+  const followed = new Set(
+    following.map((item: { professorId: string }) => item.professorId),
+  );
 
   return NextResponse.json({
-    professors: professors.map((professor) => ({
-      ...professor,
-      isFollowing: followed.has(professor.id),
-    })),
+    professors: professors.map(
+      (professor: { id: string; name: string | null; email: string }) => ({
+        ...professor,
+        isFollowing: followed.has(professor.id),
+      }),
+    ),
   });
 }

@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +9,7 @@ type Params = {
 export async function PATCH(_: Request, context: Params) {
   try {
     const user = await requireUser();
-    if (user.role !== UserRole.PROFESSOR) {
+    if (user.role !== "PROFESSOR") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

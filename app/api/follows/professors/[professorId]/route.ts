@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +5,15 @@ import { prisma } from "@/lib/prisma";
 type Params = {
   params: Promise<{ professorId: string }>;
 };
+
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
 
 export async function POST(_: Request, context: Params) {
   try {
@@ -36,10 +44,7 @@ export async function POST(_: Request, context: Params) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     // Concurrent follow requests can race; treat duplicate insert as success.
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (isUniqueViolation(error)) {
       return NextResponse.json({ ok: true });
     }
     if (error instanceof Error && error.message === "Unauthorized") {

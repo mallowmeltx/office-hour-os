@@ -1,4 +1,3 @@
-import { EventStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/current-user";
@@ -17,7 +16,7 @@ type Params = {
 export async function PATCH(request: NextRequest, context: Params) {
   try {
     const user = await requireUser();
-    if (user.role !== UserRole.PROFESSOR) {
+    if (user.role !== "PROFESSOR") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -35,7 +34,7 @@ export async function PATCH(request: NextRequest, context: Params) {
     const updatedEvent = await prisma.event.update({
       where: { id: eventId },
       data: {
-        status: EventStatus.LIVE,
+        status: "LIVE",
         liveTopic: parsed.data.topic,
         meetingUrl: parsed.data.meetingUrl,
       },
@@ -54,7 +53,7 @@ export async function PATCH(request: NextRequest, context: Params) {
         meetingUrl: parsed.data.meetingUrl,
         isActive: true,
         tags: {
-          create: eventTags.map((row) => ({ tagId: row.tagId })),
+          create: eventTags.map((row: { tagId: string }) => ({ tagId: row.tagId })),
         },
       },
     });

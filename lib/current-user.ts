@@ -1,6 +1,8 @@
-import { UserRole } from "@prisma/client";
 import { auth0 } from "@/lib/auth0";
 import { prisma } from "@/lib/prisma";
+
+const ROLE_STUDENT = "STUDENT" as const;
+const ROLE_PROFESSOR = "PROFESSOR" as const;
 
 export async function getCurrentUser() {
   const session = await auth0.getSession();
@@ -25,7 +27,7 @@ export async function getCurrentUser() {
       auth0UserId,
       email,
       name: session.user.name ?? session.user.nickname ?? undefined,
-      role: UserRole.STUDENT,
+      role: ROLE_STUDENT,
     },
   });
 }
@@ -40,7 +42,7 @@ export async function requireUser() {
 
 export async function requireProfessor() {
   const user = await requireUser();
-  if (user.role !== UserRole.PROFESSOR) {
+  if (user.role !== ROLE_PROFESSOR) {
     throw new Error("Forbidden");
   }
   return user;

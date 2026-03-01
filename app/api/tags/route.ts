@@ -25,10 +25,10 @@ export async function GET() {
       : Promise.resolve([]),
   ]);
 
-  const followed = new Set(following.map((row) => row.tagId));
+  const followed = new Set(following.map((row: { tagId: string }) => row.tagId));
 
   return NextResponse.json({
-    tags: tags.map((tag) => ({
+    tags: tags.map((tag: { id: string; slug: string; name: string }) => ({
       ...tag,
       isFollowing: followed.has(tag.id),
     })),

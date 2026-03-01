@@ -1,4 +1,3 @@
-import { EventStatus, UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +9,7 @@ type Params = {
 export async function PATCH(_: Request, context: Params) {
   try {
     const user = await requireUser();
-    if (user.role !== UserRole.PROFESSOR) {
+    if (user.role !== "PROFESSOR") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -23,7 +22,7 @@ export async function PATCH(_: Request, context: Params) {
     await prisma.$transaction([
       prisma.event.update({
         where: { id: eventId },
-        data: { status: EventStatus.ENDED },
+        data: { status: "ENDED" },
       }),
       prisma.liveSession.updateMany({
         where: {

@@ -50,7 +50,7 @@ export async function notifyFollowersForEvent(input: EventNotificationInput) {
 
   const recipients = await buildRecipients(
     input.professorId,
-    eventTags.map((item) => item.tagId),
+    eventTags.map((item: { tagId: string }) => item.tagId),
   );
 
   if (recipients.size === 0) return;

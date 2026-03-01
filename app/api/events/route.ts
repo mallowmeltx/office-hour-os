@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser, requireUser } from "@/lib/current-user";
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
-    if (user.role !== UserRole.PROFESSOR) {
+    if (user.role !== "PROFESSOR") {
       return NextResponse.json(
         { error: "Only professors can create events" },
         { status: 403 },

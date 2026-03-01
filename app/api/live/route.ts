@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/current-user";
@@ -55,7 +54,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
-    if (user.role !== UserRole.PROFESSOR) {
+    if (user.role !== "PROFESSOR") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
             where: { eventId: parsed.data.eventId },
             select: { tagId: true },
           })
-        ).map((row) => row.tagId)
+        ).map((row: { tagId: string }) => row.tagId)
       : [];
 
     const mergedTagIds = [...new Set([...parsed.data.tagIds, ...eventTagIds])];
