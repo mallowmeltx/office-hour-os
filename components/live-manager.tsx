@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 type LiveSession = {
@@ -32,6 +33,7 @@ type TagOption = {
 
 type Props = {
   canManageLive: boolean;
+  currentUserId: string | null;
 };
 
 function parseMaybeJson(text: string): Record<string, unknown> {
@@ -52,7 +54,7 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-export function LiveManager({ canManageLive }: Props) {
+export function LiveManager({ canManageLive, currentUserId }: Props) {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [events, setEvents] = useState<EventOption[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
@@ -64,6 +66,7 @@ export function LiveManager({ canManageLive }: Props) {
     eventId: "",
     tagIds: [] as string[],
   });
+  const useLinkedEventTags = form.eventId !== "";
 
   async function load() {
     const [sessionsResponse, eventsResponse, tagsResponse] = await Promise.all([
@@ -129,7 +132,7 @@ export function LiveManager({ canManageLive }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         topic: form.topic,
-        meetingUrl: form.meetingUrl,
+        meetingUrl: useLinkedEventTags ? undefined : form.meetingUrl,
         eventId: form.eventId || undefined,
         tagIds: form.tagIds,
       }),
@@ -168,14 +171,26 @@ export function LiveManager({ canManageLive }: Props) {
             <input
               value={form.meetingUrl}
               onChange={(event) => setForm({ ...form, meetingUrl: event.target.value })}
-              placeholder="Meeting URL"
-              required
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
+              placeholder={
+                useLinkedEventTags
+                  ? "Using linked event meeting URL"
+                  : "Meeting URL"
+              }
+              required={!useLinkedEventTags}
+              disabled={useLinkedEventTags}
+              className="rounded border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <select
             value={form.eventId}
-            onChange={(event) => setForm({ ...form, eventId: event.target.value })}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                eventId: event.target.value,
+                // Linked events should drive tags, so clear manual picks.
+                tagIds: event.target.value ? [] : form.tagIds,
+              })
+            }
             className="mt-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="">No linked event</option>
@@ -185,22 +200,36 @@ export function LiveManager({ canManageLive }: Props) {
               </option>
             ))}
           </select>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div
+            className={`mt-3 flex flex-wrap gap-2 transition-opacity ${
+              useLinkedEventTags ? "opacity-50" : "opacity-100"
+            }`}
+          >
             {tags.map((tag) => (
               <button
                 key={tag.id}
                 type="button"
-                onClick={() => toggleTag(tag.id)}
+                onClick={() => {
+                  if (useLinkedEventTags) return;
+                  toggleTag(tag.id);
+                }}
+                disabled={useLinkedEventTags}
                 className={`rounded border px-3 py-1 text-sm ${
                   form.tagIds.includes(tag.id)
                     ? "border-slate-900 bg-slate-900 text-white"
                     : "border-slate-300 text-slate-700"
-                }`}
+                } disabled:cursor-not-allowed`}
               >
                 {tag.name}
               </button>
             ))}
           </div>
+          {useLinkedEventTags ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Tag and meeting URL inputs are disabled for linked events. Both come
+              from the linked event.
+            </p>
+          ) : null}
           <button className="mt-4 rounded bg-slate-900 px-3 py-2 text-sm text-white">
             Start Live Session
           </button>
@@ -210,10 +239,19 @@ export function LiveManager({ canManageLive }: Props) {
       <div className="space-y-3">
         {sessions.map((session) => (
           <div key={session.id} className="rounded border border-slate-200 p-4">
-            <p className="font-medium text-slate-900">{session.topic}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium text-slate-900">{session.topic}</p>
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                LIVE
+              </span>
+            </div>
             <p className="text-sm text-slate-600">
               {session.professor.name ?? session.professor.email}
             </p>
+            {currentUserId === session.professor.id ? (
+              <p className="text-xs font-medium text-indigo-700">Your event</p>
+            ) : null}
             {session.event ? (
               <p className="text-sm text-slate-500">Event: {session.event.title}</p>
             ) : null}
@@ -226,7 +264,12 @@ export function LiveManager({ canManageLive }: Props) {
               <a href={session.meetingUrl} target="_blank" rel="noreferrer" className="text-indigo-600">
                 Join
               </a>
-              {canManageLive ? (
+              {session.event ? (
+                <Link href={`/events/${session.event.id}`} className="text-indigo-600">
+                  Open room
+                </Link>
+              ) : null}
+              {canManageLive && currentUserId === session.professor.id ? (
                 <button
                   onClick={() => endSession(session.id)}
                   className="text-rose-600"

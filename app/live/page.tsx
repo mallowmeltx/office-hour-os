@@ -14,7 +14,10 @@ export default async function LivePage() {
           Professors can set their live status and students can join instantly.
         </p>
       </div>
-      <LiveManager canManageLive={user?.role === "PROFESSOR"} />
+      <LiveManager
+        canManageLive={user?.role === "PROFESSOR"}
+        currentUserId={user?.id ?? null}
+      />
     </section>
   );
 }

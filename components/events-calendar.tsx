@@ -16,6 +16,7 @@ type EventRecord = {
     name: string | null;
     email: string;
   };
+  isOwner: boolean;
   tags: { tag: { id: string; name: string; slug: string } }[];
 };
 
@@ -30,16 +31,41 @@ export function EventsCalendar({ isProfessor }: Props) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
-    startTime: "",
-    endTime: "",
+    startDate: "",
+    startClock: "",
+    endDate: "",
+    endClock: "",
     meetingUrl: "",
     tagIds: [] as string[],
   });
+
+  function extractApiErrorMessage(data: unknown) {
+    if (!data || typeof data !== "object") return null;
+
+    const maybe = data as {
+      error?: string | { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+    };
+
+    if (typeof maybe.error === "string") return maybe.error;
+    if (maybe.error && typeof maybe.error === "object") {
+      const formFirst = maybe.error.formErrors?.[0];
+      if (formFirst) return formFirst;
+
+      const fieldErrors = maybe.error.fieldErrors ?? {};
+      const firstField = Object.values(fieldErrors).find(
+        (value): value is string[] => Array.isArray(value) && value.length > 0,
+      );
+      if (firstField?.[0]) return firstField[0];
+    }
+
+    return null;
+  }
 
   async function load() {
     const [eventsResponse, tagsResponse] = await Promise.all([
@@ -85,8 +111,6 @@ export function EventsCalendar({ isProfessor }: Props) {
       body: JSON.stringify({
         ...form,
         meetingUrl,
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString(),
       }),
     });
 
@@ -94,25 +118,49 @@ export function EventsCalendar({ isProfessor }: Props) {
       setForm({
         title: "",
         description: "",
-        startTime: "",
-        endTime: "",
+        startDate: "",
+        startClock: "",
+        endDate: "",
+        endClock: "",
         meetingUrl: "",
         tagIds: [],
       });
       setFormMessage("Event created and saved.");
       await load();
     } else {
-      const data = (await response.json().catch(() => null)) as
-        | { error?: string | { formErrors?: string[] } }
-        | null;
+      const data = await response.json().catch(() => null);
       setFormError(
-        typeof data?.error === "string"
-          ? data.error
-          : "Could not create event. Check URL/time and role.",
+        extractApiErrorMessage(data) ??
+          "Could not create event. Check URL/time and role.",
       );
     }
 
     setSaving(false);
+  }
+
+  async function deleteEvent(eventId: string) {
+    const confirmed = window.confirm("Delete this event?");
+    if (!confirmed) return;
+
+    setDeletingEventId(eventId);
+    setFormError(null);
+    setFormMessage(null);
+
+    const response = await fetch(`/api/events/${eventId}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      setFormMessage("Event deleted.");
+      await load();
+    } else {
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setFormError(data?.error ?? "Could not delete event.");
+    }
+
+    setDeletingEventId(null);
   }
 
   if (loading) return <p className="text-sm text-slate-500">Loading events...</p>;
@@ -138,21 +186,49 @@ export function EventsCalendar({ isProfessor }: Props) {
               required
               className="rounded border border-slate-300 px-3 py-2 text-sm"
             />
-            <input
-              type="datetime-local"
-              value={form.startTime}
-              onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-              required
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              type="datetime-local"
-              value={form.endTime}
-              onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-              required
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-            />
+            <div className="rounded border border-slate-300 px-3 py-2">
+              <label className="mb-1 block text-xs text-slate-500">Start date</label>
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(event) => setForm({ ...form, startDate: event.target.value })}
+                required
+                className="w-full text-sm outline-none"
+              />
+            </div>
+            <div className="rounded border border-slate-300 px-3 py-2">
+              <label className="mb-1 block text-xs text-slate-500">Start time</label>
+              <input
+                type="time"
+                value={form.startClock}
+                onChange={(event) => setForm({ ...form, startClock: event.target.value })}
+                required
+                className="w-full text-sm outline-none"
+              />
+            </div>
+            <div className="rounded border border-slate-300 px-3 py-2">
+              <label className="mb-1 block text-xs text-slate-500">End date (optional)</label>
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(event) => setForm({ ...form, endDate: event.target.value })}
+                className="w-full text-sm outline-none"
+              />
+            </div>
+            <div className="rounded border border-slate-300 px-3 py-2">
+              <label className="mb-1 block text-xs text-slate-500">End time (optional)</label>
+              <input
+                type="time"
+                value={form.endClock}
+                onChange={(event) => setForm({ ...form, endClock: event.target.value })}
+                className="w-full text-sm outline-none"
+              />
+            </div>
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            If no end time/date is provided, session defaults to 1 hour. If only end
+            date is set, end time defaults to the start time.
+          </p>
           <textarea
             value={form.description}
             onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -193,7 +269,14 @@ export function EventsCalendar({ isProfessor }: Props) {
           <div key={event.id} className="rounded border border-slate-200 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-slate-900">{event.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-slate-900">{event.title}</p>
+                  {event.isOwner ? (
+                    <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                      Your event
+                    </span>
+                  ) : null}
+                </div>
                 <p className="text-sm text-slate-600">
                   By {event.professor.name ?? event.professor.email}
                 </p>
@@ -202,9 +285,16 @@ export function EventsCalendar({ isProfessor }: Props) {
                   {new Date(event.endTime).toLocaleString()}
                 </p>
               </div>
-              <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                {event.status}
-              </span>
+              {event.status === "LIVE" ? (
+                <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  LIVE
+                </span>
+              ) : (
+                <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                  {event.status}
+                </span>
+              )}
             </div>
             {event.tags.length > 0 ? (
               <p className="mt-2 text-sm text-slate-500">
@@ -218,6 +308,15 @@ export function EventsCalendar({ isProfessor }: Props) {
               <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="text-indigo-600">
                 Join
               </a>
+              {isProfessor && event.isOwner ? (
+                <button
+                  onClick={() => void deleteEvent(event.id)}
+                  disabled={deletingEventId === event.id}
+                  className="text-rose-600 disabled:opacity-60"
+                >
+                  {deletingEventId === event.id ? "Deleting..." : "Delete"}
+                </button>
+              ) : null}
             </div>
           </div>
         ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type LiveSession = {
@@ -99,6 +100,14 @@ export function HomeLiveList() {
           >
             Join Meeting
           </a>
+          {session.event ? (
+            <Link
+              href={`/events/${session.event.id}`}
+              className="mt-2 ml-3 inline-block text-sm font-medium text-indigo-600"
+            >
+              Open room
+            </Link>
+          ) : null}
         </div>
       ))}
     </div>
