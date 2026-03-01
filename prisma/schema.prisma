@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  PROFESSOR
+}
+
+enum EventStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model User {
+  id                String           @id @default(cuid())
+  auth0UserId       String           @unique
+  email             String           @unique
+  name              String?
+  role              UserRole         @default(STUDENT)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  eventsHosted      Event[]
+  followingTags     FollowTag[]
+  followingProfs    FollowProfessor[] @relation("StudentFollowings")
+  followers         FollowProfessor[] @relation("ProfessorFollowers")
+  discussions       DiscussionPost[]
+  notifications     Notification[]
+  liveSessions      LiveSession[]    @relation("ProfessorLiveSessions")
+}
+
+model Tag {
+  id        String      @id @default(cuid())
+  slug      String      @unique
+  name      String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  events    EventTag[]
+  followers FollowTag[]
+  liveTags  LiveSessionTag[]
+}
+
+model Event {
+  id            String          @id @default(cuid())
+  professorId   String
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  meetingUrl    String
+  status        EventStatus     @default(SCHEDULED)
+  liveTopic     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  professor     User            @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  tags          EventTag[]
+  discussion    DiscussionPost[]
+  notifications Notification[]
+  liveSessions  LiveSession[]
+}
+
+model EventTag {
+  eventId    String
+  tagId      String
+  assignedAt DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, tagId])
+}
+
+model FollowProfessor {
+  studentId   String
+  professorId String
+  createdAt   DateTime @default(now())
+  student     User     @relation("StudentFollowings", fields: [studentId], references: [id], onDelete: Cascade)
+  professor   User     @relation("ProfessorFollowers", fields: [professorId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, professorId])
+}
+
+model FollowTag {
+  studentId String
+  tagId     String
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, tagId])
+}
+
+model DiscussionPost {
+  id        String           @id @default(cuid())
+  eventId   String
+  authorId  String
+  parentId  String?
+  content   String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author    User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    DiscussionPost?  @relation("PostReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   DiscussionPost[] @relation("PostReplies")
+}
+
+model LiveSession {
+  id          String           @id @default(cuid())
+  professorId String
+  eventId     String?
+  topic       String
+  meetingUrl  String
+  startedAt   DateTime         @default(now())
+  endedAt     DateTime?
+  isActive    Boolean          @default(true)
+  professor   User             @relation("ProfessorLiveSessions", fields: [professorId], references: [id], onDelete: Cascade)
+  event       Event?           @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  tags        LiveSessionTag[]
+}
+
+model LiveSessionTag {
+  liveSessionId String
+  tagId         String
+  assignedAt    DateTime    @default(now())
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([liveSessionId, tagId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String?
+  title     String
+  body      String
+  type      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+}
