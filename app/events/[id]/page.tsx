@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DiscussionBoard } from "@/components/discussion-board";
+import { DiscussionSummary } from "@/components/discussion-summary";
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { requirePageSession } from "@/lib/require-page-session";
@@ -79,6 +80,9 @@ export default async function EventPage({ params }: Props) {
           >
             Export .txt
           </Link>
+        </div>
+        <div className="mt-3">
+          <DiscussionSummary eventId={event.id} />
         </div>
       </div>
 
